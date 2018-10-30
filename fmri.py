@@ -61,7 +61,7 @@ def initialize_from_folder(rtfmridirpath, datadir):
 # Splits G_all into a dict of the same structure holding sz and ct subjects.
 def separate_diagnoses(rtfmridirpath, G_all):
     
-    sz_patients = [0, 1, 2, 3, 4, 5, 6, 8, 9, 12, 13, 14]
+    sz_patients = [0, 1, 2, 3, 4, 5, 8, 9, 12, 13, 14]
     ct_patients = [6, 7, 10, 11]
     # Didn't feel like actually doing data processing on the excel file.
     # Excel is one indexed, these are zero indexd.
