@@ -6,18 +6,18 @@
 
 import numpy as np
 # import matplotlib as mpl
-import pandas as pd
-import scipy as sp
+# import pandas as pd
+# import scipy as sp
+import scipy.io as spio
 import networkx as nx
 import os
 
 
 ## INITIALIZATION
 
-''' CASEY'S FXN INPUTS
-rtfmridirpath = '/Users/caseypancoast/Documents/MATLAB/rtfmri/'
+''' CASEY'S FXN INPUTS'''
+rtfmridirpath = '/Users/caseypancoast/Documents/_School/Complex Networks/rtfmri/'
 datadir = 'data/'
-'''
 
 # Import the necessary files, put them all into a massive dictionary,
 # Concurrently create a dictionary of graphs with the same structure.
@@ -37,11 +37,12 @@ def initialize_from_folder(rtfmridirpath, datadir):
         filepath = datadirpath + i
         all_data[i] = {}
         G_all[i] = {}
-        for j in range(sp.io.loadmat(filepath)['Z'].shape[2]): # num of subjects
+        for j in range(spio.loadmat(filepath)['Z'].shape[2]): # num of subjects
             #Do we need to turn all nan's into zero?
-            all_data[i][j] = (sp.io.loadmat(filepath)['Z'])[:,:,j]
+            all_data[i][j] = (spio.loadmat(filepath)['Z'])[:,:,j]
             # [i] is the trial, [j] is the subject number.
             G_all[i][j] = nx.convert_matrix.from_numpy_array(all_data[i][j])
+            # THIS GRAPH IS A WEIGHTED, FULLY CONNECTED GRAPH OF ALL 128 REGIONS
     
     # Convert atlas into dictionary keyed by node #
     atlasfile = 'atlas.txt'
@@ -51,30 +52,30 @@ def initialize_from_folder(rtfmridirpath, datadir):
     keyed_atlas = {}
     for i in range(atlas.shape[0]):
         keyed_atlas[i] = atlas[i]
-    
+        
+    return G_all, keyed_atlas
+ 
     
 ## FUNCTIONS    
     
-# Produces two lists of subject numbers from excel diagnosis data.
-# Splits the alldata graph G_all up into dictionaries of schiz/non-schiz subjects.
-        
-### AS OF RIGHT NOW ThIS FUNCTION DOES NOT WORK ###         
-        
+# Splits G_all into a dict of the same structure holding sz and ct subjects.
 def separate_diagnoses(rtfmridirpath, G_all):
     
-    excelfile = 'rtfmri_info.xlsx'
-    excelpath = rtfmridirpath + excelfile
-    diagdata = pd.read_excel(excelpath)['sz_patient']
-    # The above is a dictionary wth 0 - 14 mapping to 0 for control and 1 for schz.
+    sz_patients = [0, 1, 2, 3, 4, 5, 6, 8, 9, 12, 13, 14]
+    ct_patients = [6, 7, 10, 11]
+    # Didn't feel like actually doing data processing on the excel file.
+    # Excel is one indexed, these are zero indexd.
     
-    G_ctr = {}
+    G_ct = {}
     for i in G_all:
-        for j in diagdata:
-            G_ctr[i][j] = G_all[i][j]
-    G_sch = {}
+        G_ct[i] = {}
+        for j in ct_patients:
+            G_ct[i][j] = G_all[i][j]
+    G_sz = {}
     for i in G_all:
-        for j in diagdata['Schizophrenia']:
-            G_sch[i][j] = G_all[i][j]
-    G_split = {'Neurotypical Graphs': G_ctr, 'Schizophrenia Graphs': G_sch}
+        G_sz[i] = {}
+        for j in sz_patients:
+            G_sz[i][j] = G_all[i][j]
+    G_split = {'Neurotypical Graphs': G_ct, 'Schizophrenia Graphs': G_sz}
     return G_split
 
