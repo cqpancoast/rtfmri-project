@@ -62,20 +62,36 @@ def initialize_from_folder(rtfmridirpath, datadir):
 def separate_diagnoses(rtfmridirpath, G_all):
     
     sz_patients = [0, 1, 2, 3, 4, 5, 8, 9, 12, 13, 14]
-    ct_patients = [6, 7, 10, 11]
+    nt_patients = [6, 7, 10, 11]
     # Didn't feel like actually doing data processing on the excel file.
-    # Excel is one indexed, these are zero indexd.
+    # Excel is one indexed, these are zero indexed.
     
-    G_ct = {}
+    G_nt = {}
     for i in G_all:
-        G_ct[i] = {}
-        for j in ct_patients:
-            G_ct[i][j] = G_all[i][j]
+        G_nt[i] = {}
+        for j in nt_patients:
+            G_nt[i][j] = G_all[i][j]
     G_sz = {}
     for i in G_all:
         G_sz[i] = {}
         for j in sz_patients:
             G_sz[i][j] = G_all[i][j]
-    G_split = {'Neurotypical Graphs': G_ct, 'Schizophrenia Graphs': G_sz}
+    G_split = {'NT Graphs': G_nt, 'SZ Graphs': G_sz}
     return G_split
 
+# process_diagnoses : G_split, ProcessingFxn(Graph -> ???) -> G_split_processed
+# Process NT and SZ connectivity graphs using some metric that is passed in.
+def process_diagnoses(G_split, process_graph):
+    NT_processed = {}
+    SZ_processed = {}
+    for gr in G_split['NT Graphs']:
+        NT_processed[gr] = map(process_graph, G_split['NT Graphs'][gr])
+    for gr in G_split['SZ Graphs']:
+        SZ_processed[gr] = map(process_graph, G_split['SZ Graphs'][gr])
+    G_split_processed = {'NT Processed' : NT_processed, 'SZ Processed' : SZ_processed}
+    return G_split_processed
+
+# I'm not sure how, but this is going to create a network in the shape of a brain.
+# - Gephi?
+def visualize_graph(G):
+    ...
