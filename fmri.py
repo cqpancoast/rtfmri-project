@@ -42,7 +42,7 @@ def initialize_from_folder(rtfmridirpath, datadir):
             all_data[i][j] = (spio.loadmat(filepath)['Z'])[:,:,j]
             # [i] is the trial, [j] is the subject number.
             G_all[i][j] = nx.convert_matrix.from_numpy_array(all_data[i][j])
-            # THIS GRAPH IS A WEIGHTED, FULLY CONNECTED GRAPH OF ALL 128 REGIONS
+            # CREATES WEIGHTED GRAPH, INCLUDING NEGATIVE WEIGHTS
     
     # Convert atlas into dictionary keyed by node #
     atlasfile = 'atlas.txt'
@@ -58,7 +58,7 @@ def initialize_from_folder(rtfmridirpath, datadir):
     
 ## FUNCTIONS    
     
-# Splits G_all into a dict of the same structure holding sz and ct subjects.
+# Splits G_all into two dicts of the same structure holding sz and ct subjects.
 def separate_diagnoses(rtfmridirpath, G_all):
     
     sz_patients = [0, 1, 2, 3, 4, 5, 8, 9, 12, 13, 14]
@@ -82,16 +82,20 @@ def separate_diagnoses(rtfmridirpath, G_all):
 # process_diagnoses : G_split, ProcessingFxn(Graph -> ???) -> G_split_processed
 # Process NT and SZ connectivity graphs using some metric that is passed in.
 def process_diagnoses(G_split, process_graph):
+    
     NT_processed = {}
     SZ_processed = {}
-    for gr in G_split['NT Graphs']:
-        NT_processed[gr] = map(process_graph, G_split['NT Graphs'][gr])
-    for gr in G_split['SZ Graphs']:
-        SZ_processed[gr] = map(process_graph, G_split['SZ Graphs'][gr])
-    G_split_processed = {'NT Processed' : NT_processed, 'SZ Processed' : SZ_processed}
+    
+    # For each subject in a trial, process their graph in a certain way.
+    for trial in G_split['NT Graphs']:
+        NT_processed[trial] = {k: process_graph(v) for k, v in G_split['NT Graphs'][trial].items()}
+    for trial in G_split['SZ Graphs']:
+        SZ_processed[trial] = {k: process_graph(v) for k, v in G_split['SZ Graphs'][trial].items()}
+        
+    G_split_processed = {'NT Processed': NT_processed, 'SZ Processed': SZ_processed}
     return G_split_processed
 
-# I'm not sure how, but this is going to create a network in the shape of a brain.
+# I'm not sure how, but this should create a network in the shape of a brain.
 # - Gephi?
 def visualize_graph(G):
     ...
