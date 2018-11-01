@@ -5,9 +5,10 @@
 # Also contains functions for doing things we might want to do with whatever.
 
 import numpy as np
-# import matplotlib as mpl
+import matplotlib.pyplot as plt
 # import pandas as pd
 # import scipy as sp
+import collections
 import scipy.io as spio
 import networkx as nx
 import os
@@ -99,3 +100,33 @@ def process_diagnoses(G_split, process_graph):
 # - Gephi?
 def visualize_graph(G):
     ...
+    
+# Plots the strength distribution of a given graph. Strength values can be negative.        
+# THIS DOES NOT WORK YET
+# https://networkx.github.io/documentation/stable/auto_examples/drawing/plot_degree_histogram.html
+def degree_distribution(G):
+    degree_sequence = sorted([d for n, d in G.degree()], reverse=True)  # degree sequence
+    # print "Degree sequence", degree_sequence
+    degreeCount = collections.Counter(degree_sequence)
+    deg, cnt = zip(*degreeCount.items())
+    
+    fig, ax = plt.subplots()
+    plt.bar(deg, cnt, width=0.80, color='b')
+    
+    plt.title("Degree Distribution")
+    plt.ylabel("Count")
+    plt.xlabel("Degree")
+    ax.set_xticks([d + 0.4 for d in deg])
+    ax.set_xticklabels(deg)
+    
+    '''
+    # draw graph in inset
+    plt.axes([0.4, 0.4, 0.5, 0.5])
+    Gcc = sorted(nx.connected_component_subgraphs(G), key=len, reverse=True)[0]
+    pos = nx.spring_layout(G)
+    plt.axis('off')
+    nx.draw_networkx_nodes(G, pos, node_size=20)
+    nx.draw_networkx_edges(G, pos, alpha=0.4)
+    '''
+    
+    plt.show()
