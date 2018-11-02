@@ -97,20 +97,22 @@ def process_diagnoses(G_split, process_graph):
     return G_split_processed
 
 # I'm not sure how, but this should create a network in the shape of a brain.
-# - Gephi?
+# - IT SHOULD BE 3D
+# - Not totally sure whether this function is necessary, but it probably is.
 def visualize_graph(G):
     ...
     
 # Plots the strength distribution of a given graph. Strength values can be negative.        
-# THIS DOES NOT WORK YET
+# THIS DOES NOT WORK YEET
 # https://networkx.github.io/documentation/stable/auto_examples/drawing/plot_degree_histogram.html
-def degree_distribution(G):
+def strength_distribution(G):
     degree_sequence = sorted([d for n, d in G.degree()], reverse=True)  # degree sequence
     # print "Degree sequence", degree_sequence
     degreeCount = collections.Counter(degree_sequence)
     deg, cnt = zip(*degreeCount.items())
     
     fig, ax = plt.subplots()
+    # I am trying to make this a scatter plot instead of a bar chart.
     plt.bar(deg, cnt, width=0.80, color='b')
     
     plt.title("Degree Distribution")
@@ -129,4 +131,5 @@ def degree_distribution(G):
     nx.draw_networkx_edges(G, pos, alpha=0.4)
     '''
     
+    # Show the plot. Disable this if necessary.
     plt.show()
