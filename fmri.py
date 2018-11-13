@@ -99,6 +99,7 @@ def process_diagnoses(G_split, process_graph):
 # I'm not sure how, but this should create a network in the shape of a brain.
 # - IT SHOULD BE 3D
 # - Not totally sure whether this function is necessary, but it probably is.
+# - REally, I'm not even sure where to begin with this one.
 def visualize_graph(G):
     ...
     
@@ -115,9 +116,9 @@ def strength_distribution(G):
     # I am trying to make this a scatter plot instead of a bar chart.
     plt.bar(deg, cnt, width=0.80, color='b')
     
-    plt.title("Degree Distribution")
+    plt.title("Strength Distribution")
     plt.ylabel("Count")
-    plt.xlabel("Degree")
+    plt.xlabel("Strength")
     ax.set_xticks([d + 0.4 for d in deg])
     ax.set_xticklabels(deg)
     
