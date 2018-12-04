@@ -6,9 +6,6 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-# import pandas as pd
-# import scipy as sp
-import collections
 import scipy.io as spio
 import networkx as nx
 import os
@@ -21,9 +18,16 @@ import math
 rtfmridirpath = '/Users/caseypancoast/Documents/_School/Complex Networks/rtfmri/'
 datadir = 'data/'
 
+def load():
+    G_all, keyed_atlas = initialize_from_folder(rtfmridirpath, datadir)
+    G_split = separate_diagnoses(rtfmridirpath, G_all)
+    return G_all, G_split, keyed_atlas
+
+#G_all, G_split, keyed_atlas = load()
+
 # Import the necessary files, put them all into a massive dictionary,
 # Concurrently create a dictionary of graphs with the same structure.
-# Also makes a keyed atlas: that is, {0:[this brain region], 1: [that br...],]}
+# Also makes a keyed atlas: that is, {0:this brain region, 1: that br...,}
 
 # IMPORTANT NOTE: nx.convert_matrix.from_numpy_array is the thing that we are
 # considering changing if we want to make a different kind of graph for each 
@@ -55,10 +59,7 @@ def initialize_from_folder(rtfmridirpath, datadir):
     for i in range(atlas.shape[0]):
         keyed_atlas[i] = atlas[i]
         
-    return G_all, keyed_atlas
- 
-    
-## FUNCTIONS    
+    return G_all, keyed_atlas 
     
 # Splits G_all into two dicts of the same structure holding sz and ct subjects.
 def separate_diagnoses(rtfmridirpath, G_all):
@@ -84,16 +85,16 @@ def separate_diagnoses(rtfmridirpath, G_all):
 # process_diagnoses : G_split, ProcessingFxn(Graph -> ???) -> G_split_processed
 # Process NT and SZ connectivity graphs using some metric that is passed in.
 def process_diagnoses(G_split, process_graph):
-    
+
     NT_processed = {}
     SZ_processed = {}
-    
+
     # For each subject in a trial, process their graph in a certain way.
     for trial in G_split['NT Graphs']:
         NT_processed[trial] = {k: process_graph(v) for k, v in G_split['NT Graphs'][trial].items()}
     for trial in G_split['SZ Graphs']:
         SZ_processed[trial] = {k: process_graph(v) for k, v in G_split['SZ Graphs'][trial].items()}
-        
+
     G_split_processed = {'NT Processed': NT_processed, 'SZ Processed': SZ_processed}
     return G_split_processed
 
@@ -101,16 +102,20 @@ def process_diagnoses(G_split, process_graph):
 #   nx.average_clustering
 #   strength
 #   attack_graph
-#   
+#TODO function that computes DMN/CEN connectivity for a graph.
+    # probably uses community detection
+    # manual vs. finding something online?
+    # manual:
+        #
+    
 
+# strength : Graph -> Dict(Node, Strength)
 # Plots the strength dict of a given graph. Strength values can be negative.
-# **kwargs:
+# *args:
 # - default: no condition on which edges are considered
 # - pos_only: only positive edges are considered
 # - neg_only: only negative edges are considered
 # - range: values between the next two inputted numbers will be considered
-#
-# https://networkx.github.io/documentation/stable/auto_examples/drawing/plot_degree_histogram.html
 def strength(G, *args):
     
     if len(args) == 0:
@@ -136,7 +141,10 @@ def strength(G, *args):
         
     return G_strength
             
+# attack_graph : Graph NodePropertyFxn(Graph -> Dict) -> Dict
 # Attack the graph by removing the nodes with the highest cof a given property
+# Returns a dictionary where the keys are the fraction of nodes that have been
+# removed and the values are largest connected component sizes.
 def attack_graph(G, node_property):
     
     def find_max_value_index(dict_):
@@ -174,6 +182,6 @@ def attack_graph(G, node_property):
 # I'm not sure how, but this should create a network in the shape of a brain.
 # - IT SHOULD BE 3D
 # - Not totally sure whether this function is necessary, but it probably is.
-# - REally, I'm not even sure where to begin with this one.
+# - Really, I'm not even sure where to begin with this one.
 def visualize_graph(G):
-    return G
+    nx.draw(G)
