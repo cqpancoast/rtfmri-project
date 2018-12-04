@@ -12,6 +12,7 @@ import collections
 import scipy.io as spio
 import networkx as nx
 import os
+import math
 
 
 ## INITIALIZATION
@@ -96,41 +97,83 @@ def process_diagnoses(G_split, process_graph):
     G_split_processed = {'NT Processed': NT_processed, 'SZ Processed': SZ_processed}
     return G_split_processed
 
+### FUNCTIONS TO USE WITH THE ABOVE FUNCTION
+#   nx.average_clustering
+#   strength
+#   attack_graph
+#   
+
+# Plots the strength dict of a given graph. Strength values can be negative.
+# **kwargs:
+# - default: no condition on which edges are considered
+# - pos_only: only positive edges are considered
+# - neg_only: only negative edges are considered
+# - range: values between the next two inputted numbers will be considered
+#
+# https://networkx.github.io/documentation/stable/auto_examples/drawing/plot_degree_histogram.html
+def strength(G, *args):
+    
+    if len(args) == 0:
+        cond = lambda x: True
+    elif args[0] == 'pos_only':
+        cond = lambda x: x > 0
+    elif args[0] == 'neg_only':
+        cond = lambda x: x < 0
+    elif args[0] == 'range':
+        cond = lambda x: x > args[1] and x < args[2]   
+    
+    G_strength = {}
+    for node in G.nodes():
+        node_strength = 0
+        for neighbor in G.neighbors(node):
+            neighbor_strength = G[node][neighbor]['weight']
+            if math.isnan(neighbor_strength):
+                continue
+            elif cond(neighbor_strength):
+                node_strength += neighbor_strength
+                
+        G_strength[node] = node_strength
+        
+    return G_strength
+            
+# Attack the graph by removing the nodes with the highest cof a given property
+def attack_graph(G, node_property):
+    
+    def find_max_value_index(dict_):
+        
+        max_value = 0
+        n_to_rm = 0
+        for index in dict_:
+            if dict_[index] > max_value:
+                max_value = dict_[index]
+                n_to_rm = index
+                
+        # If the nodes are all the same size, just choose the first one.
+        if n_to_rm == 0:
+            n_to_rm = list(dict_.keys())[0]
+    
+        return n_to_rm
+    
+    recalc_t = 3 #How many nodes do you go through before recalculating?
+    
+    G_init_size = G.number_of_nodes()
+    largest_CC = {}
+    
+    for i in range(math.floor(G_init_size/recalc_t) - 1):
+            
+        for j in range(recalc_t):
+            G.remove_node(find_max_value_index(node_property(G)))
+        
+        # Fraction of nodes removed
+        frac_rm = i*recalc_t/G_init_size
+        # Largest connected component
+        largest_CC[frac_rm] = max(list(map(lambda G: G.number_of_nodes(), nx.connected_component_subgraphs(G))))
+
+    return largest_CC
+
 # I'm not sure how, but this should create a network in the shape of a brain.
 # - IT SHOULD BE 3D
 # - Not totally sure whether this function is necessary, but it probably is.
 # - REally, I'm not even sure where to begin with this one.
 def visualize_graph(G):
-    ...
-    
-# Plots the strength distribution of a given graph. Strength values can be negative.        
-# THIS DOES NOT WORK YEET
-# https://networkx.github.io/documentation/stable/auto_examples/drawing/plot_degree_histogram.html
-def strength_distribution(G):
-    degree_sequence = sorted([d for n, d in G.degree()], reverse=True)  # degree sequence
-    # print "Degree sequence", degree_sequence
-    degreeCount = collections.Counter(degree_sequence)
-    deg, cnt = zip(*degreeCount.items())
-    
-    fig, ax = plt.subplots()
-    # I am trying to make this a scatter plot instead of a bar chart.
-    plt.bar(deg, cnt, width=0.80, color='b')
-    
-    plt.title("Strength Distribution")
-    plt.ylabel("Count")
-    plt.xlabel("Strength")
-    ax.set_xticks([d + 0.4 for d in deg])
-    ax.set_xticklabels(deg)
-    
-    '''
-    # draw graph in inset
-    plt.axes([0.4, 0.4, 0.5, 0.5])
-    Gcc = sorted(nx.connected_component_subgraphs(G), key=len, reverse=True)[0]
-    pos = nx.spring_layout(G)
-    plt.axis('off')
-    nx.draw_networkx_nodes(G, pos, node_size=20)
-    nx.draw_networkx_edges(G, pos, alpha=0.4)
-    '''
-    
-    # Show the plot. Disable this if necessary.
-    plt.show()
+    return G
