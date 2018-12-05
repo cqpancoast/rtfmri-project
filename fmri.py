@@ -18,13 +18,6 @@ import math
 rtfmridirpath = '/Users/caseypancoast/Documents/_School/Complex Networks/rtfmri/'
 datadir = 'data/'
 
-def load():
-    G_all, keyed_atlas = initialize_from_folder(rtfmridirpath, datadir)
-    G_split = separate_diagnoses(rtfmridirpath, G_all)
-    return G_all, G_split, keyed_atlas
-
-#G_all, G_split, keyed_atlas = load()
-
 # Import the necessary files, put them all into a massive dictionary,
 # Concurrently create a dictionary of graphs with the same structure.
 # Also makes a keyed atlas: that is, {0:this brain region, 1: that br...,}
@@ -82,6 +75,16 @@ def separate_diagnoses(rtfmridirpath, G_all):
     G_split = {'NT Graphs': G_nt, 'SZ Graphs': G_sz}
     return G_split
 
+def load():
+    G_all, keyed_atlas = initialize_from_folder(rtfmridirpath, datadir)
+    G_split = separate_diagnoses(rtfmridirpath, G_all)
+    return G_all, G_split, keyed_atlas
+
+#G_all, G_split, keyed_atlas = load()
+
+
+## PROCESSING
+
 # process_diagnoses : G_split, ProcessingFxn(Graph -> ???) -> G_split_processed
 # Process NT and SZ connectivity graphs using some metric that is passed in.
 def process_diagnoses(G_split, process_graph):
@@ -99,7 +102,6 @@ def process_diagnoses(G_split, process_graph):
     return G_split_processed
 
 ### FUNCTIONS TO USE WITH THE ABOVE FUNCTION
-#   nx.average_clustering
 #   strength
 #   attack_graph
 #TODO function that computes DMN/CEN connectivity for a graph.
@@ -107,7 +109,6 @@ def process_diagnoses(G_split, process_graph):
     # manual vs. finding something online?
     # manual:
         #
-    
 
 # strength : Graph -> Dict(Node, Strength)
 # Plots the strength dict of a given graph. Strength values can be negative.
@@ -179,8 +180,18 @@ def attack_graph(G, node_property):
 
     return largest_CC
 
+
+## VISUALIZATION
+
+# plot_dict : Dictionary(Number, Number) -> Image
+# Takes in a Dictionary and plots the values against the sorted keys.
+# Cited: https://stackoverflow.com/questions/37266341/plotting-a-python-dict-in-order-of-key-values
+def plot_dict(dict_):
+    plt.plot(*zip(*sorted(dict_.items())))
+    plt.show()
+
 # I'm not sure how, but this should create a network in the shape of a brain.
-# - IT SHOULD BE 3D
+# - SHOULD IT BE 3D
 # - Not totally sure whether this function is necessary, but it probably is.
 # - Really, I'm not even sure where to begin with this one.
 def visualize_graph(G):
