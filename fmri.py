@@ -102,6 +102,7 @@ def process_diagnoses(G_split, process_graph):
     return G_split_processed
 
 ### FUNCTIONS TO USE WITH THE ABOVE FUNCTION
+#   
 #   strength
 #   attack_graph
 #TODO function that computes DMN/CEN connectivity for a graph.
