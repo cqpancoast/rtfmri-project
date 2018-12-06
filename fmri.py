@@ -85,10 +85,10 @@ def load():
 
 ## PROCESSING
 
-# process_diagnoses : G_split, ProcessingFxn(Graph -> ???) -> G_split_processed
+# process_diagnoses : G_split, ProcessingFxn(Graph -> X) -> G_split_processed(X)
 # Process NT and SZ connectivity graphs using some metric that is passed in.
 def process_diagnoses(G_split, process_graph):
-
+    
     NT_processed = {}
     SZ_processed = {}
 
@@ -98,11 +98,11 @@ def process_diagnoses(G_split, process_graph):
     for trial in G_split['SZ Graphs']:
         SZ_processed[trial] = {k: process_graph(v) for k, v in G_split['SZ Graphs'][trial].items()}
 
-    G_split_processed = {'NT Processed': NT_processed, 'SZ Processed': SZ_processed}
+    G_split_processed = {'NT_processed': NT_processed, 'SZ_processed': SZ_processed}
     return G_split_processed
 
 ### FUNCTIONS TO USE WITH THE ABOVE FUNCTION
-#   
+#   ???   
 #   strength
 #   attack_graph
 #TODO function that computes DMN/CEN connectivity for a graph.
@@ -110,6 +110,55 @@ def process_diagnoses(G_split, process_graph):
     # manual vs. finding something online?
     # manual:
         #
+        
+# average_diagnoses : G_split_processed(X), AveragingFxn(List-of X -> X) 
+#                         -> G_diagnosis_comparison(X)
+# Takes in a processed G_split, averages the NT diagnoses and the SZ diagnoses
+# according to a provided function.
+# Used to compare NT/SZ graphs on network measures.
+def average_diagnoses(G_split_processed):
+    
+    # list_average : [List-of Float] -> Float
+    def list_average(l): 
+        return sum(l)/len(l)
+    
+    # dict_average : [list-of Dict(Int, Float)] -> Dict(Int, Float)
+    # Constructs a single dict whose keys are all keys from the original dicts
+    # and whose values are the averages of all values at those keys.
+    def dict_average(dict_list):
+        
+        keys = range(max(map(lambda d: len(d), dict_list)))
+        
+        averaged_dict = {}
+        for i in keys:
+            values_at_index = []
+            for dict_ in dict_list:
+                if i in dict_.keys():
+                    values_at_index.append(dict_[i])
+                else: continue
+            averaged_dict[i] = list_average(values_at_index)
+        
+        return averaged_dict
+    
+    # Invoke the correct averaging function depending on the processing type
+    processed_item = list(list(list(G_split_processed.values())[0].values())[0].values())[0]
+    if isinstance(processed_item, dict):
+        average_processing = dict_average
+    elif isinstance(processed_item, float or int):
+        average_processing = lambda l: sum(l)/len(l)
+    
+    NT_averages = []
+    SZ_averages = []
+    for trial in G_split_processed['NT_processed']:
+        NT_averages.append(average_processing(list(G_split_processed['NT_processed'][trial].values())))
+    for trial in G_split_processed['SZ_processed']:
+        SZ_averages.append(average_processing(list(G_split_processed['SZ_processed'][trial].values())))
+    
+    NT_average = average_processing(NT_averages)
+    SZ_average = average_processing(SZ_averages)
+    
+    G_diagnosis_comparison = {'NT': NT_average, 'SZ': SZ_average}
+    return G_diagnosis_comparison
 
 # strength : Graph -> Dict(Node, Strength)
 # Plots the strength dict of a given graph. Strength values can be negative.
