@@ -119,8 +119,11 @@ def process_diagnoses(G_split, process_graph):
 def average_diagnoses(G_split_processed):
     
     # list_average : [List-of Float] -> Float
-    def list_average(l): 
-        return sum(l)/len(l)
+    def list_average(l):
+        if len(l) == 0:
+            return 0
+        else:
+            return sum(l)/len(l)
     
     # dict_average : [list-of Dict(Int, Float)] -> Dict(Int, Float)
     # Constructs a single dict whose keys are all keys from the original dicts
@@ -233,12 +236,23 @@ def attack_graph(G, node_property):
 
 ## VISUALIZATION
 
-# plot_dict : Dictionary(Number, Number) -> Image
+# plot_dicts : Dict(Number, Number) or [List/Dict of Dict(Number, Number)] -> Image
 # Takes in a Dictionary and plots the values against the sorted keys.
 # Cited: https://stackoverflow.com/questions/37266341/plotting-a-python-dict-in-order-of-key-values
-def plot_dict(dict_):
-    plt.plot(*zip(*sorted(dict_.items())))
-    plt.show()
+def plot_dicts(dicts_):
+    if isinstance(dicts_, dict) and isinstance(list(dicts_.values())[0], float or int):
+        plt.plot(*zip(*sorted(dicts_.items())))
+        plt.show()
+    elif isinstance(dicts_, list) and isinstance(dicts_[0], dict):
+        for dict_ in dicts_:
+            plt.plot(*zip(*sorted(dict_.items())))
+        plt.show()
+    elif isinstance(dicts_, dict) and isinstance(list(dicts_.values())[0], dict):
+        for dict_ in list(dicts_.values()):
+            plt.plot(*zip(*sorted(dict_.items())))
+        plt.show()
+    else:
+        print("plot_dicts: given unrecognized type")
 
 # I'm not sure how, but this should create a network in the shape of a brain.
 # - SHOULD IT BE 3D
