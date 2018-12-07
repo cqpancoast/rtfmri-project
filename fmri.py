@@ -22,10 +22,6 @@ datadir = 'data/'
 # Concurrently create a dictionary of graphs with the same structure.
 # Also makes a keyed atlas: that is, {0:this brain region, 1: that br...,}
 
-# IMPORTANT NOTE: nx.convert_matrix.from_numpy_array is the thing that we are
-# considering changing if we want to make a different kind of graph for each 
-# trial.
-
 def initialize_from_folder(rtfmridirpath, datadir):
     datadirpath = rtfmridirpath + datadir
     triallist = os.listdir(datadirpath) #assumes that data are in constituent dir
@@ -41,7 +37,7 @@ def initialize_from_folder(rtfmridirpath, datadir):
             all_data[i][j] = (spio.loadmat(filepath)['Z'])[:,:,j]
             # [i] is the trial, [j] is the subject number.
             G_all[i][j] = nx.convert_matrix.from_numpy_array(all_data[i][j])
-            # CREATES WEIGHTED GRAPH, INCLUDING NEGATIVE WEIGHTS
+            # CREATES WEIGHTED GRAPH, INCLUDING NEGATIVE WEIGHTS AND NAN SELF-LOOPS
     
     # Convert atlas into dictionary keyed by node #
     atlasfile = 'atlas.txt'
@@ -102,7 +98,8 @@ def process_diagnoses(G_split, process_graph):
     return G_split_processed
 
 ### FUNCTIONS TO USE WITH THE ABOVE FUNCTION
-#   ???   
+#   filter_edges_by_weight   
+    # this allows you to work with functions on non-weighted graphs
 #   strength
 #   attack_graph
 #TODO function that computes DMN/CEN connectivity for a graph.
@@ -162,6 +159,27 @@ def average_diagnoses(G_split_processed):
     
     G_diagnosis_comparison = {'NT': NT_average, 'SZ': SZ_average}
     return G_diagnosis_comparison
+
+# filter_edges_by_weight : Graph(Weighted), Float or Int -> Graph
+# Removes all edges from a graph below a given weight then removes all weights.
+# kwargs: weighted = Boolean
+def filter_edges_by_weight(G_in, weight_limit, **kwargs):
+    
+    if kwargs is None:
+        weighted = False
+    else:
+        weighted = kwargs['weighted']
+    
+    G = G_in.copy() #don't alter the original nodes!
+    edge_list = list(G.edges()) #to prevent weird stuff
+    
+    for u, v in edge_list:
+        if math.isnan(G[u][v]['weight']) or G[u][v]['weight'] <= weight_limit:
+            G.remove_edge(u, v)    
+        elif not weighted: 
+            del G[u][v]['weight']
+        
+    return G
 
 # strength : Graph -> Dict(Node, Strength)
 # Plots the strength dict of a given graph. Strength values can be negative.
@@ -240,13 +258,16 @@ def attack_graph(G, node_property):
 # Takes in a Dictionary and plots the values against the sorted keys.
 # Cited: https://stackoverflow.com/questions/37266341/plotting-a-python-dict-in-order-of-key-values
 def plot_dicts(dicts_):
+    #Just a single dict?
     if isinstance(dicts_, dict) and isinstance(list(dicts_.values())[0], float or int):
         plt.plot(*zip(*sorted(dicts_.items())))
         plt.show()
+    #List of dicts?
     elif isinstance(dicts_, list) and isinstance(dicts_[0], dict):
         for dict_ in dicts_:
             plt.plot(*zip(*sorted(dict_.items())))
         plt.show()
+    #Dict of dicts?
     elif isinstance(dicts_, dict) and isinstance(list(dicts_.values())[0], dict):
         for dict_ in list(dicts_.values()):
             plt.plot(*zip(*sorted(dict_.items())))
