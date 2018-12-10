@@ -126,6 +126,7 @@ def process_diagnoses(G_split, process_graph):
     # hmmm
 #   performance/coverage (lambda'd with DMN/CEN nodes)
 #   clustering
+    # avg_clustering — lambda G: sum(list(clustering(G).values()))/len(G)
     
         
 # average_diagnoses : G_split_processed(X), AveragingFxn(List-of X -> X) 
