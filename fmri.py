@@ -4,9 +4,6 @@
 # - (I called mine "data").
 # Also contains functions for doing things we might want to do with whatever.
 
-#TODO (THINGS TO POSSIBLY DO) ((mostly for binary networks))
-# - delete zero nodes for every participant (possibly — figure this shit out)
-
 import numpy as np
 import random as r
 import matplotlib.pyplot as plt
@@ -57,23 +54,37 @@ def initialize_from_folder(rtfmridirpath, datadir):
 # Splits G_all into two dicts of the same structure holding sz and ct subjects.
 def separate_diagnoses(rtfmridirpath, G_all):
     
-    sz_patients = [0, 1, 2, 3, 4, 5, 8, 9, 12, 13, 14]
-    nt_patients = [6, 7, 10, 11]
+    sz_subjects = [0, 1, 2, 3, 4, 5, 8, 9, 12, 13, 14]
+    nt_subjects = [6, 7, 10, 11]
+    subjects_in_question = list(list(G_all.values())[0].keys())
     # Didn't feel like actually doing data processing on the excel file.
     # Excel is one indexed, these are zero indexed.
     
     G_nt = {}
-    for i in G_all:
-        G_nt[i] = {}
-        for j in nt_patients:
-            G_nt[i][j] = G_all[i][j]
+    for trial in G_all:
+        G_nt[trial] = {}
+        for subject in set(subjects_in_question).intersection(set(nt_subjects)):
+            G_nt[trial][subject] = G_all[trial][subject]
     G_sz = {}
-    for i in G_all:
-        G_sz[i] = {}
-        for j in sz_patients:
-            G_sz[i][j] = G_all[i][j]
+    for trial in G_all:
+        G_sz[trial] = {}
+        for subject in set(subjects_in_question).intersection(set(sz_subjects)):
+            G_sz[trial][subject] = G_all[trial][subject]
     G_split = {'NT Graphs': G_nt, 'SZ Graphs': G_sz}
     return G_split
+
+# removes subjects that have incomplete graphs for whatever reason to make this
+# comparison as accurate as possible.
+def fix_G_all(G_all):
+    
+    incomp_subjects = [2, 11]
+    
+    for trial, trial_dict in list(G_all.items()):
+        for subject, subject_graph in list(trial_dict.items()):
+            if subject in incomp_subjects:
+                del G_all[trial][subject]
+    
+    return G_all
 
 def load():
     G_all, keyed_atlas = initialize_from_folder(rtfmridirpath, datadir)
@@ -111,7 +122,10 @@ def process_diagnoses(G_split, process_graph):
     # all unweighted graph fxns
 #   strength
 #   attack_graph
+    # strength
+    # hmmm
 #   performance/coverage (lambda'd with DMN/CEN nodes)
+#   clustering
     
         
 # average_diagnoses : G_split_processed(X), AveragingFxn(List-of X -> X) 
@@ -173,10 +187,10 @@ def remove_self_loops(G_in):
         G.remove_edge(node, node)
     return G
 
+
 # filter_edges_by_weight : Graph(Weighted), Float or Int -> Graph
 # Removes all edges from a graph below a given weight then removes all weights.
 # kwargs: weighted = Boolean (default is False)
-#TODO filter by density instead of weight.
 def filter_edges_by_weight(G_in, weight_limit, **kwargs):
     
     if len(kwargs) == 0:
