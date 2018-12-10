@@ -4,6 +4,11 @@
 # - (I called mine "data").
 # Also contains functions for doing things we might want to do with whatever.
 
+#TODO (THINGS TO POSSIBLY DO) ((mostly for binary networks))
+# - delete zero nodes for every participant (possibly — figure this shit out)
+# - run minimum spanning tree, build this up like leaves
+#   - this is because of the possiblity of having disconnected nodes
+
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io as spio
@@ -77,6 +82,10 @@ def load():
     return G_all, G_split, keyed_atlas
 
 #G_all, G_split, keyed_atlas = load()
+    
+# DMN and CEN nodes
+dmn_nodes = [26, 27, 28, 29, 30, 31, 48, 55, 56, 79, 80, 91, 92, 114, 115, 116, 117, 118, 119, 120, 121]
+cen_nodes = [0, 1, 4, 5, 34, 35]
 
 
 ## PROCESSING
@@ -102,6 +111,7 @@ def process_diagnoses(G_split, process_graph):
     # this allows you to work with functions on non-weighted graphs
 #   strength
 #   attack_graph
+#   performance/coverage (lambda'd with DMN/CEN nodes)
 #TODO function that computes DMN/CEN connectivity for a graph.
     # probably uses community detection
     # manual vs. finding something online?
@@ -162,7 +172,8 @@ def average_diagnoses(G_split_processed):
 
 # filter_edges_by_weight : Graph(Weighted), Float or Int -> Graph
 # Removes all edges from a graph below a given weight then removes all weights.
-# kwargs: weighted = Boolean
+# kwargs: weighted = Boolean (default is False)
+#TODO filter by density instead of weight.
 def filter_edges_by_weight(G_in, weight_limit, **kwargs):
     
     if kwargs is None:
@@ -213,6 +224,36 @@ def strength(G, *args):
         
     return G_strength
             
+# regional_connectivity : Graph [List-of Node] -> Float
+# Takes in a list of nodes and uses a coverage function to measure the 
+# effectiveness of that partition.
+def regional_connectivity(G, region):
+    
+    # partition G
+    partition = [region, list(set(G.nodes())^set(region))]
+    
+    # All edges in the given region
+    region_edges = []
+    for u in region:
+        for v in region:
+            if not u == v:
+                region_edges.append[(u, v)]
+    
+    if nx.is_weighted(G):
+        in_edge_weight = 0
+        out_edge_weight = 0
+        for u, v in G.edges():
+            if (u, v) in region_edges:
+                in_edge_weight += G[u][v]['weight']
+            elif u in region or v in region:
+                continue
+            else:
+                out_edge_weight += G[u][v]['weight'] 
+    elif not nx.is_weighted(G):
+        connectivity = nx.coverage(G, partition)
+    
+    return connectivity
+
 # attack_graph : Graph NodePropertyFxn(Graph -> Dict) -> Dict
 # Attack the graph by removing the nodes with the highest cof a given property
 # Returns a dictionary where the keys are the fraction of nodes that have been
