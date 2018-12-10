@@ -112,11 +112,6 @@ def process_diagnoses(G_split, process_graph):
 #   strength
 #   attack_graph
 #   performance/coverage (lambda'd with DMN/CEN nodes)
-#TODO function that computes DMN/CEN connectivity for a graph.
-    # probably uses community detection
-    # manual vs. finding something online?
-    # manual:
-        #
         
 # average_diagnoses : G_split_processed(X), AveragingFxn(List-of X -> X) 
 #                         -> G_diagnosis_comparison(X)
@@ -227,6 +222,9 @@ def strength(G, *args):
 # regional_connectivity : Graph [List-of Node] -> Float
 # Takes in a list of nodes and uses a coverage function to measure the 
 # effectiveness of that partition.
+# (NOTE: Treating the rest of the network as a single community is okay in this
+# instance, as we are only comparing the relative connectivities of the regions
+# across trials, not making some sort of non-relative claim about them.)
 def regional_connectivity(G, region):
     
     # partition G
@@ -236,21 +234,27 @@ def regional_connectivity(G, region):
     region_edges = []
     for u in region:
         for v in region:
-            if not u == v:
-                region_edges.append[(u, v)]
+            region_edges.append((u, v))
+            
+    print(region_edges)
     
     if nx.is_weighted(G):
         in_edge_weight = 0
-        out_edge_weight = 0
+        all_edge_weight = 0
         for u, v in G.edges():
-            if (u, v) in region_edges:
-                in_edge_weight += G[u][v]['weight']
-            elif u in region or v in region:
+            if u == v:
                 continue
+            elif (u, v) in region_edges:
+                in_edge_weight += G[u][v]['weight']
+                all_edge_weight += G[u][v]['weight']
             else:
-                out_edge_weight += G[u][v]['weight'] 
+                all_edge_weight += G[u][v]['weight']
+        connectivity = in_edge_weight/all_edge_weight
     elif not nx.is_weighted(G):
         connectivity = nx.coverage(G, partition)
+        
+    if connectivity < 0:
+        print("There's a problem.")
     
     return connectivity
 
