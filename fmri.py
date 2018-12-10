@@ -248,8 +248,6 @@ def clustering(G):
         strength_between_neighbors = 0
         neighbors = list(G.neighbors(node))
         
-        print(neighbors)
-        
         for i in range(len(neighbors)):
             strength += G[node][neighbors[i]]['weight']
             for j in range(i):
@@ -308,8 +306,6 @@ def regional_connectivity(G, region):
     for i in range(len(region)):
         for j in range(i):
             region_edges.append((region[j], region[i]))
-            
-    print(region_edges)
             
     if nx.is_weighted(G):
         in_edge_weight = 0
@@ -374,21 +370,77 @@ def attack_graph(G, node_property):
 
     return largest_CC
 
-# generate_ck : G_split -> Clustering coeff vs. degree
-# Filters via minimum spanning tree, determines C(k).
-def generate_ck(G_split, density):
+# norm : [List-of Number] -> [List-of Number]
+# Normalizes a list of numbers
+def norm(l):
     
-    G_split_nq = process_diagnoses(G_split, lambda G: filter_edges_mst(G, density))
-    G_split_clustering = average_diagnoses(process_diagnoses(G_split_nq, nx.clustering))
-    G_split_degree = average_diagnoses(process_diagnoses(G_split_nq, nx.degree))
-    
-    # Initially, the degree and how m
-    C_k = {'NT': {}, 'SZ': {}}
-    for node in range(len(keyed_atlas)):
-        C_k['NT'][G_split_degree['NT'][node]] = G_split_clustering['NT'][node]
-        C_k['SZ'][G_split_degree['SZ'][node]] = G_split_clustering['SZ'][node]
+    norml = [0] * len(l)
+    suml = sum(l)
+    for i in range(len(l)):
+        norml[i] = l[i]/suml
         
-    return C_k
+    return norml
+
+def norm_dict_values(dict_):
+    
+    return dict(zip(list(dict_.keys()), norm(list(dict_.values()))))
+
+# generate_pk : G_split (optional density) -> Degree dist.
+def generate_pk(G_split, *args):
+    
+    if len(args) == 0:
+        process = strength
+        G_split_nq = G_split
+    else:
+        density = args[0]
+        process = nx.degree
+        G_split_nq = process_diagnoses(G_split, lambda G: filter_edges_mst(G, density))
+    
+    
+    G_split_degree = process_diagnoses(G_split_nq, process)
+    print(G_split_degree)
+    
+    # Generate list of all degrees for SZ and NT graphs
+    all_degrees = {'NT': [], 'SZ': []}
+    for trial in G_split_degree['NT Graphs'].values():
+        for subject in trial.values():
+            all_degrees['NT'].extend(list(dict(subject).values()))
+    for trial in G_split_degree['SZ Graphs'].values():
+        for subject in trial.values():
+            all_degrees['SZ'].extend(list(dict(subject).values()))
+    
+    P_k = {'NT': {}, 'SZ': {}}
+    
+    for degree in all_degrees['NT']:
+        if degree in list(P_k['NT'].keys()):
+            P_k['NT'][degree] += 1
+        else:
+            P_k['NT'][degree] = 1
+            
+    for degree in all_degrees['SZ']:
+        if degree in list(P_k['SZ'].keys()):
+            P_k['SZ'][degree] += 1
+        else:
+            P_k['SZ'][degree] = 1
+            
+    #P_k['NT'] = norm_dict_values(P_k['NT'])
+    #P_k['SZ'] = norm_dict_values(P_k['SZ'])
+    
+    return P_k
+
+# log_bin_hist : Dict(Degree, Quantity) -> Dict(Number, Number)
+# Cited: first networks_and_computers_handson from class
+def log_bin_hist(dict_):
+    
+    kmin = min(dict_.keys())
+    kmax = max(dict_.keys())
+    
+    # Get 10 logarithmically spaced bins between kmin and kmax
+    bin_edges = np.linspace(kmin, kmax, num=10)
+    # histogram the data into these bins
+    density, bins = np.histogram(list(dict_.keys()), bins=bin_edges, density=True)
+    
+    return dict(zip(bins, density))
 
 
 ## VISUALIZATION
@@ -410,16 +462,19 @@ def plot_dicts(dicts_):
     #Dict of dicts?
     elif isinstance(dicts_, dict) and isinstance(list(dicts_.values())[0], dict):
         for dict_ in list(dicts_.values()):
-            ax.plot(*zip(*sorted(dict_.items())))
+            ax.loglog(*zip(*sorted(dict_.items())))
     else:
         print("plot_dicts: given unrecognized type")
         return
     
     # Hide the right and top spines
     ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
+    ax.spines['top'].set_visible(False)    
+    #ax.legend(["Neurotypical", "Schizophrenic"])
     
-    ax.legend(["Neurotypical", "Scizophrenic"])
+    ax.set_title("CC for erdos-renyi random graph of density .1")
+    ax.set_xlabel("Strength")
+    ax.set_ylabel("p_w")
     
     plt.show()
 
