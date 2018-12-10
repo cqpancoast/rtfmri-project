@@ -88,14 +88,15 @@ def fix_G_all(G_all):
 
 def load():
     G_all, keyed_atlas = initialize_from_folder(rtfmridirpath, datadir)
+    G_all = fix_G_all(G_all)
     G_split = separate_diagnoses(rtfmridirpath, G_all)
     return G_all, G_split, keyed_atlas
 
 #G_all, G_split, keyed_atlas = load()
     
 # DMN and CEN nodes
-dmn_nodes = [26, 27, 28, 29, 30, 31, 48, 55, 56, 79, 80, 91, 92, 114, 115, 116, 117, 118, 119, 120, 121]
-cen_nodes = [0, 1, 4, 5, 34, 35]
+dmn_nodes = [48, 55]
+cen_nodes = [6, 7]
 
 
 ## PROCESSING
@@ -117,7 +118,7 @@ def process_diagnoses(G_split, process_graph):
     return G_split_processed
 
 ### FUNCTIONS TO USE WITH THE ABOVE FUNCTION
-#   filter_edges_by_weight   
+#   filter_edges_mst  
     # nx.average_shortest_path_length (doesn't like negative weights)
     # all unweighted graph fxns
 #   strength
@@ -127,8 +128,9 @@ def process_diagnoses(G_split, process_graph):
 #   performance/coverage (lambda'd with DMN/CEN nodes)
 #   clustering
     # avg_clustering — lambda G: sum(list(clustering(G).values()))/len(G)
-    
-        
+#   lambda G: gnp_random_graph(len(keyed_atlas), density)
+
+
 # average_diagnoses : G_split_processed(X), AveragingFxn(List-of X -> X) 
 #                         -> G_diagnosis_comparison(X)
 # Takes in a processed G_split, averages the NT diagnoses and the SZ diagnoses
@@ -166,7 +168,9 @@ def average_diagnoses(G_split_processed):
     if isinstance(processed_item, dict):
         average_processing = dict_average
     elif isinstance(processed_item, float or int):
-        average_processing = lambda l: sum(l)/len(l)
+        average_processing = list_average
+    else: # if it's not a supported type, try converting it to a dictionary.
+        average_processing = lambda thing: dict_average(list(map(dict, thing)))
     
     NT_averages = []
     SZ_averages = []
@@ -219,10 +223,10 @@ def filter_edges_mst(G_in, density):
     G = remove_self_loops(G_in.copy())
     # (don't forget to save the original edges first)
     sorted_edges = sorted(list(G.edges()), key=lambda edge: G[edge[0]][edge[1]]['weight'])
+    # max used so we don't have to invert the weights
     G = nx.maximum_spanning_tree(G, weight='weight')
     
     # ...then, build it back up to the desired density by adding heavy edges.
-    print(sorted_edges)
     while nx.density(G) < density:
         if len(sorted_edges) == 0:
             print("filter_edges_mst: Density too high...?")
@@ -242,14 +246,15 @@ def clustering(G):
     for node in G.nodes():
         strength = 0
         strength_between_neighbors = 0
-        neighbors = G.neighbors(node)
-        G_clustering[node] = G.neighbors(node)
+        neighbors = list(G.neighbors(node))
         
-        for neighbor in neighbors:
-            strength += G[node][neighbor]['weight']
-            for neighbor2 in neighbors:
-                if neighbor != neighbor2:
-                    strength_between_neighbors += G[neighbor][neighbor2]['weight']
+        print(neighbors)
+        
+        for i in range(len(neighbors)):
+            strength += G[node][neighbors[i]]['weight']
+            for j in range(i):
+                if not neighbors[i] == neighbors[j]:
+                    strength_between_neighbors += G[neighbors[j]][neighbors[i]]['weight']
                     
         G_clustering[node] = 2*strength_between_neighbors/(strength * (strength - 1))
     
@@ -300,12 +305,12 @@ def regional_connectivity(G, region):
     
     # All edges in the given region
     region_edges = []
-    for u in region:
-        for v in region:
-            region_edges.append((u, v))
+    for i in range(len(region)):
+        for j in range(i):
+            region_edges.append((region[j], region[i]))
             
     print(region_edges)
-    
+            
     if nx.is_weighted(G):
         in_edge_weight = 0
         all_edge_weight = 0
@@ -322,7 +327,7 @@ def regional_connectivity(G, region):
         connectivity = nx.coverage(G, partition)
         
     if connectivity < 0:
-        print("There's a problem.")
+        print("Warning: negative connectivity.")
     
     return connectivity
 
@@ -369,6 +374,22 @@ def attack_graph(G, node_property):
 
     return largest_CC
 
+# generate_ck : G_split -> Clustering coeff vs. degree
+# Filters via minimum spanning tree, determines C(k).
+def generate_ck(G_split, density):
+    
+    G_split_nq = process_diagnoses(G_split, lambda G: filter_edges_mst(G, density))
+    G_split_clustering = average_diagnoses(process_diagnoses(G_split_nq, nx.clustering))
+    G_split_degree = average_diagnoses(process_diagnoses(G_split_nq, nx.degree))
+    
+    # Initially, the degree and how m
+    C_k = {'NT': {}, 'SZ': {}}
+    for node in range(len(keyed_atlas)):
+        C_k['NT'][G_split_degree['NT'][node]] = G_split_clustering['NT'][node]
+        C_k['SZ'][G_split_degree['SZ'][node]] = G_split_clustering['SZ'][node]
+        
+    return C_k
+
 
 ## VISUALIZATION
 
@@ -376,22 +397,31 @@ def attack_graph(G, node_property):
 # Takes in a Dictionary and plots the values against the sorted keys.
 # Cited: https://stackoverflow.com/questions/37266341/plotting-a-python-dict-in-order-of-key-values
 def plot_dicts(dicts_):
+    
+    ax = plt.axes()
+    
     #Just a single dict?
     if isinstance(dicts_, dict) and isinstance(list(dicts_.values())[0], float or int):
-        plt.plot(*zip(*sorted(dicts_.items())))
-        plt.show()
+        ax.plot(*zip(*sorted(dicts_.items())))
     #List of dicts?
     elif isinstance(dicts_, list) and isinstance(dicts_[0], dict):
         for dict_ in dicts_:
-            plt.plot(*zip(*sorted(dict_.items())))
-        plt.show()
+            ax.plot(*zip(*sorted(dict_.items())))
     #Dict of dicts?
     elif isinstance(dicts_, dict) and isinstance(list(dicts_.values())[0], dict):
         for dict_ in list(dicts_.values()):
-            plt.plot(*zip(*sorted(dict_.items())))
-        plt.show()
+            ax.plot(*zip(*sorted(dict_.items())))
     else:
         print("plot_dicts: given unrecognized type")
+        return
+    
+    # Hide the right and top spines
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    
+    ax.legend(["Neurotypical", "Scizophrenic"])
+    
+    plt.show()
 
 # I'm not sure how, but this should create a network in the shape of a brain.
 # - SHOULD IT BE 3D
