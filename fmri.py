@@ -6,10 +6,9 @@
 
 #TODO (THINGS TO POSSIBLY DO) ((mostly for binary networks))
 # - delete zero nodes for every participant (possibly — figure this shit out)
-# - run minimum spanning tree, build this up like leaves
-#   - this is because of the possiblity of having disconnected nodes
 
 import numpy as np
+import random as r
 import matplotlib.pyplot as plt
 import scipy.io as spio
 import networkx as nx
@@ -103,15 +102,17 @@ def process_diagnoses(G_split, process_graph):
     for trial in G_split['SZ Graphs']:
         SZ_processed[trial] = {k: process_graph(v) for k, v in G_split['SZ Graphs'][trial].items()}
 
-    G_split_processed = {'NT_processed': NT_processed, 'SZ_processed': SZ_processed}
+    G_split_processed = {'NT Graphs': NT_processed, 'SZ Graphs': SZ_processed}
     return G_split_processed
 
 ### FUNCTIONS TO USE WITH THE ABOVE FUNCTION
 #   filter_edges_by_weight   
-    # this allows you to work with functions on non-weighted graphs
+    # nx.average_shortest_path_length (doesn't like negative weights)
+    # all unweighted graph fxns
 #   strength
 #   attack_graph
 #   performance/coverage (lambda'd with DMN/CEN nodes)
+    
         
 # average_diagnoses : G_split_processed(X), AveragingFxn(List-of X -> X) 
 #                         -> G_diagnosis_comparison(X)
@@ -154,10 +155,10 @@ def average_diagnoses(G_split_processed):
     
     NT_averages = []
     SZ_averages = []
-    for trial in G_split_processed['NT_processed']:
-        NT_averages.append(average_processing(list(G_split_processed['NT_processed'][trial].values())))
-    for trial in G_split_processed['SZ_processed']:
-        SZ_averages.append(average_processing(list(G_split_processed['SZ_processed'][trial].values())))
+    for trial in G_split_processed['NT Graphs']:
+        NT_averages.append(average_processing(list(G_split_processed['NT Graphs'][trial].values())))
+    for trial in G_split_processed['SZ Graphs']:
+        SZ_averages.append(average_processing(list(G_split_processed['SZ Graphs'][trial].values())))
     
     NT_average = average_processing(NT_averages)
     SZ_average = average_processing(SZ_averages)
@@ -165,13 +166,20 @@ def average_diagnoses(G_split_processed):
     G_diagnosis_comparison = {'NT': NT_average, 'SZ': SZ_average}
     return G_diagnosis_comparison
 
+# remove_self_loops : Graph -> Graph
+def remove_self_loops(G_in):
+    G = G_in.copy()
+    for node in G.nodes():
+        G.remove_edge(node, node)
+    return G
+
 # filter_edges_by_weight : Graph(Weighted), Float or Int -> Graph
 # Removes all edges from a graph below a given weight then removes all weights.
 # kwargs: weighted = Boolean (default is False)
 #TODO filter by density instead of weight.
 def filter_edges_by_weight(G_in, weight_limit, **kwargs):
     
-    if kwargs is None:
+    if len(kwargs) == 0:
         weighted = False
     else:
         weighted = kwargs['weighted']
@@ -186,6 +194,51 @@ def filter_edges_by_weight(G_in, weight_limit, **kwargs):
             del G[u][v]['weight']
         
     return G
+
+# filter_edges_mst : Graph(weighted) Float(0 <= x <= 1) -> Graph(unweighted)
+# Find a graph of a certian density such that all of the nodes are connected.
+# (OBVIOUS HACK: Set density to 0 to just have the minimum spanning tree.)
+def filter_edges_mst(G_in, density):
+    
+    # First, find the maximum spanning tree of the given graph...
+    G = remove_self_loops(G_in.copy())
+    # (don't forget to save the original edges first)
+    sorted_edges = sorted(list(G.edges()), key=lambda edge: G[edge[0]][edge[1]]['weight'])
+    G = nx.maximum_spanning_tree(G, weight='weight')
+    
+    # ...then, build it back up to the desired density by adding heavy edges.
+    print(sorted_edges)
+    while nx.density(G) < density:
+        if len(sorted_edges) == 0:
+            print("filter_edges_mst: Density too high...?")
+            return G
+        node1, node2 = sorted_edges.pop()
+        if not G.has_edge(node1, node2):
+            G.add_edge(node1, node2)
+    
+    return G
+
+# clustering : Graph -> Dict(Node, Clustering Coefficient)
+# Determines the clustering coefficient of each each node in a graph
+def clustering(G):
+    
+    G_clustering = {}
+    
+    for node in G.nodes():
+        strength = 0
+        strength_between_neighbors = 0
+        neighbors = G.neighbors(node)
+        G_clustering[node] = G.neighbors(node)
+        
+        for neighbor in neighbors:
+            strength += G[node][neighbor]['weight']
+            for neighbor2 in neighbors:
+                if neighbor != neighbor2:
+                    strength_between_neighbors += G[neighbor][neighbor2]['weight']
+                    
+        G_clustering[node] = 2*strength_between_neighbors/(strength * (strength - 1))
+    
+    return G_clustering
 
 # strength : Graph -> Dict(Node, Strength)
 # Plots the strength dict of a given graph. Strength values can be negative.
@@ -218,7 +271,7 @@ def strength(G, *args):
         G_strength[node] = node_strength
         
     return G_strength
-            
+
 # regional_connectivity : Graph [List-of Node] -> Float
 # Takes in a list of nodes and uses a coverage function to measure the 
 # effectiveness of that partition.
@@ -264,6 +317,11 @@ def regional_connectivity(G, region):
 # removed and the values are largest connected component sizes.
 def attack_graph(G, node_property):
     
+    if node_property == 'random':
+        find_node = lambda G: r.randrange(len(G))
+    else:
+        find_node = lambda G: find_max_value_index(node_property(G))
+    
     def find_max_value_index(dict_):
         
         max_value = 0
@@ -287,7 +345,7 @@ def attack_graph(G, node_property):
     for i in range(math.floor(G_init_size/recalc_t) - 1):
             
         for j in range(recalc_t):
-            G.remove_node(find_max_value_index(node_property(G)))
+            G.remove_node(find_node(G))
         
         # Fraction of nodes removed
         frac_rm = i*recalc_t/G_init_size
