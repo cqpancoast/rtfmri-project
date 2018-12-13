@@ -152,7 +152,9 @@ def average_diagnoses(G_split_processed):
     # and whose values are the averages of all values at those keys.
     def dict_average(dict_list):
         
-        keys = range(max(map(lambda d: len(d), dict_list)))
+        # Use commeneted out code if dicts are of different lenghts.
+        # keys = range(max(map(lambda d: len(d), dict_list)))
+        keys = list(dict_list[0].keys())
         
         averaged_dict = {}
         for i in keys:
@@ -330,13 +332,15 @@ def regional_connectivity(G, region):
     return connectivity
 
 # attack_graph : Graph NodePropertyFxn(Graph -> Dict) -> Dict
-# Attack the graph by removing the nodes with the highest cof a given property
+# Attack the graph by removing the nodes with the highest of a given property
 # Returns a dictionary where the keys are the fraction of nodes that have been
 # removed and the values are largest connected component sizes.
-def attack_graph(G, node_property):
+def attack_graph(G_in, node_property):
+    
+    G = G_in.copy()
     
     if node_property == 'random':
-        find_node = lambda G: r.randrange(len(G))
+        find_node = lambda G: r.choice(list(G.nodes()))
     else:
         find_node = lambda G: find_max_value_index(node_property(G))
     
@@ -355,7 +359,7 @@ def attack_graph(G, node_property):
     
         return n_to_rm
     
-    recalc_t = 3 #How many nodes do you go through before recalculating?
+    recalc_t = 5 #How many nodes do you go through before recalculating?
     
     G_init_size = G.number_of_nodes()
     largest_CC = {}
@@ -494,6 +498,22 @@ def generate_conn_vs_trial(G_split, region):
     connectivity_vs_trials = {'NT': extract_runs(NT_averages), 'SZ': extract_runs(SZ_averages)}
     return connectivity_vs_trials
 
+# generate_attack : G_split Node_property Density -> Dict(something I don't care anymore)
+# Attacks the graphs and then takes the averages.
+def generate_attack(G_split_in, node_property, *args):
+    
+    if len(args) == 0:
+        G_split = process_diagnoses(G_split_in, lambda G: G.copy())
+        something = average_diagnoses(process_diagnoses(G_split, lambda G: attack_graph(G, node_property)))
+    else:
+        G_split = process_diagnoses(G_split_in, lambda G: filter_edges_mst(G, args[0]))
+        something = average_diagnoses(process_diagnoses(G_split, lambda G: attack_graph(G, node_property)))
+    
+    return something
+
+
+## VISUALIZATION
+    
 # log_bin_hist : Dict(Degree, Quantity) -> Dict(Number, Number)
 # Cited: first networks_and_computers_handson from class
 def log_bin_hist(dict_):
@@ -502,7 +522,7 @@ def log_bin_hist(dict_):
     kmax = max(dict_.keys())
     
     # Get 10 logarithmically spaced bins between kmin and kmax
-    bin_edges = np.linspace(kmin, kmax, num=10)
+    bin_edges = np.linspace(kmin, kmax, num=20)
     # histogram the data into these bins
     density, bins = np.histogram(list(dict_.keys()), bins=bin_edges, density=True)
     
@@ -515,9 +535,6 @@ def bin_deg_dist(P_k):
     binned_dd['SZ'] = log_bin_hist(P_k['SZ'])
     
     return binned_dd
-
-
-## VISUALIZATION
 
 # plot_dicts : Dict(Number, Number) or [List/Dict of Dict(Number, Number)] -> Image
 # Takes in a Dictionary and plots the values against the sorted keys.
@@ -540,7 +557,7 @@ def plot_dicts(dicts_):
     #Dict of dicts
     elif isinstance(dicts_, dict) and isinstance(list(dicts_.values())[0], dict):
         for dict_ in list(dicts_.values()):
-            ax.loglog(*zip(*sorted(dict_.items())))
+            ax.plot(*zip(*sorted(dict_.items())))
     else:
         print("plot_dicts: given unrecognized type")
         return
@@ -549,10 +566,10 @@ def plot_dicts(dicts_):
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)    
     
-    ax.set_title("Degree distribution of minimum spanning tree-based (density = .5)")
-    ax.set_xlabel("Degree")
-    ax.set_ylabel("p_k")
-    ax.set_xticks(range(1, len(list_)+1))
+    ax.set_title("Attacks on strength minimum spanning tree-based graph")
+    ax.set_xlabel("Fraction of nodes removed")
+    ax.set_ylabel("Size of largest connected component")
+    ax.set_ylim([0, 132])
     ax.legend(["Neurotypical", "Schizophrenic"])
     
     plt.show()
