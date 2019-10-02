@@ -1,6 +1,6 @@
 # rtfmri-project
 
-Final partner project for PHYS 5116: Complex Networks and Applications. For details, see slideshow, which is the .pdf in this repository.
+_Final partner project for PHYS 5116: Complex Networks and Applications. For details, see slideshow, which is the .pdf in this repository._
 
 A Python package for: 
 - taking rtfMRI data that has been preprocessed into a blood-oxygen level correlation matrix between brain regions,
